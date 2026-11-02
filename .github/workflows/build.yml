@@ -1,0 +1,45 @@
+name: Build Mochi Days
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mochi_project.zip"
+      - ".github/workflows/build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack project
+        run: |
+          mkdir work
+          unzip -q mochi_project.zip -d work
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Prepare Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.5"
+
+      - name: Build APK
+        working-directory: work
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MochiDays-APK
+          path: work/app/build/outputs/apk/debug/app-debug.apk
